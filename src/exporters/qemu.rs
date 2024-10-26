@@ -1,3 +1,5 @@
+use sysinfo::{CpuExt, CpuRefreshKind, RefreshKind, System, SystemExt};
+
 use crate::exporters::Exporter;
 use crate::sensors::Topology;
 use crate::sensors::{utils::ProcessRecord, Sensor};
@@ -13,6 +15,7 @@ pub struct QemuExporter {
     // We don't need a MetricGenerator for this exporter, because it "justs"
     // puts the metrics in files in the same way as the powercap kernel module.
     topology: Topology,
+    sysinfo: System,
 }
 
 impl Exporter for QemuExporter {
@@ -48,7 +51,20 @@ impl QemuExporter {
         let topology = sensor
             .get_topology()
             .expect("sensor topology should be available");
-        QemuExporter { topology }
+        let mut system = System::new_all();
+        system.refresh_cpu();
+        std::thread::sleep(<sysinfo::System as SystemExt>::MINIMUM_CPU_UPDATE_INTERVAL);
+        QemuExporter {
+            topology,
+            sysinfo: system,
+        }
+    }
+
+    fn get_total_cpu_usage(&mut self) -> f64 {
+        self.sysinfo.refresh_cpu();
+        (self.sysinfo.global_cpu_info().cpu_usage() / self.topology.proc_tracker.nb_cores as f32)
+            as f64
+            * 10_f64
     }
 
     /// Processes the metrics of `self.topology` and exposes them at the given `path`.
@@ -59,6 +75,7 @@ impl QemuExporter {
         if let Some(topo_energy) = self.topology.get_records_diff_power_microwatts() {
             let processes = self.topology.proc_tracker.get_alive_processes();
             let qemu_processes = QemuExporter::filter_qemu_vm_processes(&processes);
+            let total_cpu_usage = self.get_total_cpu_usage();
             for qp in qemu_processes {
                 if qp.len() > 2 {
                     let last = qp.first().unwrap();
@@ -76,9 +93,11 @@ impl QemuExporter {
                         .topology
                         .get_process_cpu_usage_percentage(last.process.pid)
                     {
-                        let uj_to_add = ratio.value.parse::<f64>().unwrap()
-                            * topo_energy.value.parse::<f64>().unwrap()
-                            / 100.0;
+                        // HACK: Energy Credit
+                        let cpu_credit = ratio.value.parse::<f64>().unwrap() / total_cpu_usage;
+                        println!("{vm_name}: cpu_usage: {ratio:?}, total: {total_cpu_usage}, credit: {cpu_credit}");
+                        let uj_to_add =
+                            cpu_credit * topo_energy.value.parse::<f64>().unwrap() / 100.0;
                         let complete_path = format!("{path}/{vm_name}/intel-rapl:0");
                         match QemuExporter::add_or_create(&complete_path, uj_to_add as u64) {
                             Ok(result) => {
@@ -106,6 +125,12 @@ impl QemuExporter {
                 let mut splitted = elmt.split('=');
                 splitted.next();
                 return String::from(splitted.next().unwrap().split(',').next().unwrap());
+            }
+        }
+        // Extract Proxmox vmids too
+        for pair in cmdline.windows(2) {
+            if pair[0] == "-id" {
+                return pair[1].clone();
             }
         }
         String::from("") // TODO return Option<String> None instead, and stop at line 76 (it won't work with {path}//intel-rapl)
@@ -142,7 +167,7 @@ impl QemuExporter {
                         .process
                         .cmdline
                         .iter()
-                        .find(|x| x.contains("qemu-system"))
+                        .find(|x| x.contains("qemu-system") || x.contains("/usr/bin/kvm"))
                     {
                         debug!("Found a process with {}", res);
                         let mut tmp: Vec<ProcessRecord> = vec![];
