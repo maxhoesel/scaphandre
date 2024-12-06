@@ -884,6 +884,25 @@ impl Topology {
         None
     }
 
+    pub fn get_process_cpu_time_percentage(&self, pid: Pid) -> Option<Record> {
+        let proc_records = self.get_proc_tracker().find_records(pid)?;
+        let last_record = proc_records.first()?;
+        let previous_record = proc_records.get(1)?;
+
+        last_record
+            .process
+            .total_time_jiffies(self.get_proc_tracker());
+        let process_time = (last_record.process.stime + last_record.process.utime)
+            - (previous_record.process.stime + previous_record.process.utime);
+        let cpu_time = self.get_stats_diff()?.total_time_jiffies();
+
+        Some(Record::new(
+            last_record.timestamp,
+            ((process_time as f32 / cpu_time as f32) * 100.0).to_string(),
+            units::Unit::Percentage,
+        ))
+    }
+
     pub fn get_process_memory_virtual_bytes(&self, pid: Pid) -> Option<Record> {
         if let Some(record) = self.get_proc_tracker().get_process_last_record(pid) {
             return Some(Record::new(
@@ -1607,7 +1626,7 @@ impl CPUStat {
             "CPUStat contains user {} nice {} system {} idle: {} irq {} softirq {} iowait {} steal {} guest_nice {} guest {}",
             user, nice, system, idle, irq, softirq, iowait, steal, guest_nice, guest
         );
-        user + nice + system + guest_nice + guest
+        user + nice + system
     }
 }
 
