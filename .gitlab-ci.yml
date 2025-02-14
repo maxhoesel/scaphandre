@@ -2,7 +2,7 @@ stages:
   - build
 
 binary:
-  stage: guild
+  stage: build
   image: rust:1.84-bookworm
   script:
     - cargo build --release -F qemu
