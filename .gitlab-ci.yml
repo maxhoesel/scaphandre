@@ -7,5 +7,5 @@ binary:
   script:
     - cargo build --release -F qemu
     - |
-      curl -L --header "JOB-TOKEN: ${CI_JOB_TOKEN}" --upload-file target/release/scaphandre
+      curl -L --header "JOB-TOKEN: ${CI_JOB_TOKEN}" --upload-file target/release/scaphandre \
       "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/scaphandre/main/scaphandre"
