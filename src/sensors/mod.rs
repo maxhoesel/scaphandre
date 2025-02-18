@@ -7,6 +7,7 @@
 pub mod msr_rapl;
 #[cfg(target_os = "windows")]
 use msr_rapl::get_msr_value;
+pub mod ipmitool;
 #[cfg(target_os = "linux")]
 pub mod powercap_rapl;
 pub mod units;
