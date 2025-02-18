@@ -24,10 +24,18 @@ impl IpmptoolSensor {
             }
         };
         let stdout = String::from_utf8_lossy(&cmd.stdout).to_string();
+        dbg!(&stdout);
 
         let power_reading: u32 = stdout
             .lines()
-            .find(|l| l.starts_with("Instantaneous power reading"))
+            .find_map(|l| {
+                let trim = l.trim();
+                if l.starts_with("Instantaneous power reading") {
+                    Some(trim)
+                } else {
+                    None
+                }
+            })
             .unwrap()
             .split_whitespace()
             .collect::<Vec<_>>()[1]
