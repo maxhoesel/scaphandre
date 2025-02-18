@@ -55,7 +55,7 @@ pub struct ExporterArgs {
 
     // Read DMCI statistics and export them
     #[arg(long)]
-    pub impi: bool,
+    pub ipmi: bool,
 }
 
 impl PrometheusExporter {
@@ -88,7 +88,7 @@ impl Exporter for PrometheusExporter {
             self.hostname.clone(),
             self.args.qemu,
             self.args.containers,
-            self.args.impi,
+            self.args.ipmi,
         );
         run_server(socket_addr, metric_generator, &self.args.suffix);
     }

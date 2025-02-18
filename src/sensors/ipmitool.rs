@@ -13,13 +13,13 @@ impl IpmptoolSensor {
     }
 
     pub fn read_power(&self) -> Option<Record> {
-        let cmd = match Command::new("impitool")
+        let cmd = match Command::new("ipmitool")
             .args(["dcmi", "power", "reading"])
             .output()
         {
             Ok(out) => out,
             Err(e) => {
-                warn!("Unable to get impi reading: {e}");
+                warn!("Unable to get ipmi reading: {e}");
                 return None;
             }
         };

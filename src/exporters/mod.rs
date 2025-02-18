@@ -170,7 +170,7 @@ impl MetricGenerator {
         hostname: String,
         _qemu: bool,
         _watch_containers: bool,
-        _impi: bool,
+        _ipmi: bool,
     ) -> MetricGenerator {
         let data = Vec::new();
         #[cfg(feature = "containers")]
@@ -201,7 +201,7 @@ impl MetricGenerator {
                     warn!("--containers was used but scaphandre couldn't connect to any container runtime.");
                 }
             }
-            let ipmi = if _impi {
+            let ipmi = if _ipmi {
                 Some(IpmptoolSensor::new())
             } else {
                 None
