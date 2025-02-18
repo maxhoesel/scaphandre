@@ -1,5 +1,6 @@
 use crate::sensors::utils::current_system_time_since_epoch;
 use crate::sensors::Record;
+use std::fs::read_to_string;
 use std::process::Command;
 
 use super::units::Unit;
@@ -24,13 +25,12 @@ impl IpmptoolSensor {
             }
         };
         let stdout = String::from_utf8_lossy(&cmd.stdout).to_string();
-        dbg!(&stdout);
 
         let power_reading: u32 = stdout
             .lines()
             .find_map(|l| {
                 let trim = l.trim();
-                if l.starts_with("Instantaneous power reading") {
+                if trim.starts_with("Instantaneous power reading") {
                     Some(trim)
                 } else {
                     None
@@ -38,7 +38,7 @@ impl IpmptoolSensor {
             })
             .unwrap()
             .split_whitespace()
-            .collect::<Vec<_>>()[1]
+            .collect::<Vec<_>>()[3]
             .parse()
             .unwrap();
         Some(Record::new(

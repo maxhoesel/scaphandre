@@ -470,6 +470,9 @@ impl Topology {
     }
 
     pub fn get_records_time_diff(&self) -> Option<f64> {
+        if self.record_buffer.len() < 2 {
+            return None;
+        }
         let last_record = self.record_buffer.last()?;
         let previous_record = self.record_buffer.get(self.record_buffer.len() - 2)?;
         Some(last_record.timestamp.as_secs_f64() - previous_record.timestamp.as_secs_f64())
@@ -477,6 +480,9 @@ impl Topology {
 
     // Same as get_records_diff_power_microwatts, but does not subtract static power if defined
     pub fn get_records_power_diff_microwatts_full(&self) -> Option<Record> {
+        if self.record_buffer.len() < 2 {
+            return None;
+        }
         let last_record = self.record_buffer.last()?;
         let previous_record = self.record_buffer.get(self.record_buffer.len() - 2)?;
         let t_diff = self.get_records_time_diff()?;
